@@ -1,0 +1,389 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <div class="row">
+        <div class="col-md-8">
+    {% if current_user.is_authenticated %}
+            <div class="card mb-4">
+            <div class="card-body">
+                    <form id="postForm" class="mb-0" enctype="multipart/form-data">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <div class="mb-3">
+                            <textarea class="form-control" id="content" rows="4" placeholder="Что у вас нового?" style="font-size: 16px; padding: 15px;"></textarea>
+                    </div>
+                        <div class="d-flex flex-wrap gap-3 align-items-center">
+                            <div class="d-flex gap-3">
+                                <input type="file" class="form-control" id="image" name="image" accept="image/*" style="display: none;">
+                                <input type="file" class="form-control" id="video" name="video" accept="video/*" style="display: none;">
+                                <input type="file" class="form-control" id="file" name="file" style="display: none;">
+                                
+                                <button type="button" class="btn btn-outline-primary px-3" onclick="document.getElementById('image').click()">
+                                    <i class="fas fa-image"></i> Фото
+                                </button>
+                                <button type="button" class="btn btn-outline-primary px-3" onclick="document.getElementById('video').click()">
+                                    <i class="fas fa-video"></i> Видео
+                                </button>
+                                <button type="button" class="btn btn-outline-primary px-3" onclick="document.getElementById('file').click()">
+                                    <i class="fas fa-paperclip"></i> Файл
+                                </button>
+                </div>
+                            <div class="form-check form-switch d-flex align-items-center">
+                                <input type="checkbox" class="form-check-input" id="is_pinned" role="switch" style="width: 3em; height: 1.5em;">
+                                <label class="form-check-label ms-2" for="is_pinned">
+                                    <i class="fas fa-thumbtack"></i> Закрепить
+                                </label>
+                    </div>
+                            <button type="submit" class="btn btn-primary px-4 ms-auto" style="font-size: 16px;">
+                                <i class="fas fa-paper-plane"></i> Опубликовать
+                            </button>
+                        </div>
+                        <div id="preview" class="mt-3">
+                            <div id="imagePreview" style="display: none;">
+                                <img src="" alt="Preview" class="img-fluid rounded mb-2" style="max-height: 300px;">
+                                <button type="button" class="btn btn-sm btn-danger" onclick="removePreview('image')">
+                                    <i class="fas fa-times"></i> Удалить
+                                </button>
+                            </div>
+                            <div id="videoPreview" style="display: none;">
+                                <video controls class="img-fluid rounded mb-2" style="max-height: 300px;">
+                                    <source src="" type="video/mp4">
+                                </video>
+                                <button type="button" class="btn btn-sm btn-danger" onclick="removePreview('video')">
+                                    <i class="fas fa-times"></i> Удалить
+                                </button>
+                    </div>
+                            <div id="filePreview" style="display: none;">
+                                <div class="alert alert-info d-flex align-items-center">
+                                    <i class="fas fa-file me-2"></i>
+                                    <span id="fileName"></span>
+                                    <button type="button" class="btn btn-sm btn-danger ms-auto" onclick="removePreview('file')">
+                                        <i class="fas fa-times"></i>
+                        </button>
+                                </div>
+                            </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    {% endif %}
+
+    <div id="posts">
+                {% for post in posts %}
+                <div class="card post-card mb-4" data-post-id="{{ post.id }}">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center mb-3">
+                            <img src="{{ url_for('static', filename='avatars/' + post.author.avatar) if post.author.avatar else url_for('static', filename='avatars/default.png') }}" 
+                                 class="rounded-circle me-2" style="width: 40px; height: 40px; object-fit: cover;">
+                            <div>
+                                <h5 class="card-title mb-0">
+                                    <a href="{{ url_for('user_profile', user_id=post.author.id) }}" class="text-decoration-none text-dark">
+                                        {{ post.author.username }}
+                                    </a>
+                                </h5>
+                                <small class="text-muted">{{ post.created_at.strftime('%d.%m.%Y %H:%M') }}</small>
+                            </div>
+                            {% if post.is_pinned %}
+                            <span class="ms-auto badge bg-success">
+                                <i class="fas fa-thumbtack"></i> Закреплено
+                            </span>
+                            {% endif %}
+    </div>
+
+                        <p class="card-text">{{ post.content }}</p>
+                        
+                        {% if post.image_url %}
+                        <img src="{{ url_for('static', filename='posts/' + post.image_url) }}" class="img-fluid rounded mb-3">
+                        {% endif %}
+
+                        {% if post.video_url %}
+                        <video controls class="img-fluid rounded mb-3">
+                            <source src="{{ url_for('uploaded_video', filename=post.video_url) }}" type="video/mp4">
+                            Ваш браузер не поддерживает видео.
+                        </video>
+                        {% endif %}
+
+                        {% if post.file_url %}
+                        <div class="mb-3">
+                            <a href="{{ url_for('uploaded_file', filename=post.file_url) }}" 
+                               class="btn btn-outline-primary" download="{{ post.file_name }}">
+                                <i class="fas fa-download me-2"></i>{{ post.file_name }}
+                            </a>
+                        </div>
+                        {% endif %}
+                        
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div class="d-flex align-items-center">
+                                <button type="button" 
+                                        class="btn btn-link text-decoration-none like-btn" 
+                                        onclick="toggleLike({{ post.id }})"
+                                        data-post-id="{{ post.id }}">
+                                    <i class="fas fa-heart {% if post.is_liked %}text-danger{% endif %}"></i>
+                                    <span class="likes-count">{{ post.likes_count }}</span>
+                                </button>
+                                <button type="button" 
+                                        class="btn btn-link text-decoration-none" 
+                                        onclick="toggleComments({{ post.id }})">
+                                    <i class="fas fa-comment"></i>
+                                    <span class="comments-count">{{ post.comments|length }}</span>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="comments-section mt-3" style="display: none;">
+                            <div class="comments-list">
+                                {% for comment in post.comments %}
+                                <div class="comment">
+                                    <div class="d-flex align-items-center mb-2">
+                                        <img src="{{ url_for('static', filename='avatars/' + comment.user.avatar) if comment.user.avatar else url_for('static', filename='avatars/default.png') }}"
+                                             class="rounded-circle me-2" style="width: 30px; height: 30px; object-fit: cover;">
+                                    <div>
+                                            <strong>{{ comment.user.username }}</strong>
+                                            <small class="text-muted">{{ comment.created_at.strftime('%d.%m.%Y %H:%M') }}</small>
+                                        </div>
+                                    </div>
+                                    <p class="mb-0">{{ comment.content }}</p>
+                                </div>
+                                {% endfor %}
+                                    </div>
+                            {% if current_user.is_authenticated %}
+                            <form class="comment-form mt-3" onsubmit="event.preventDefault(); addComment(event, {{ post.id }})">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <div class="input-group">
+                                    <input type="text" class="form-control" placeholder="Написать комментарий...">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-paper-plane"></i>
+                                    </button>
+                                </div>
+                            </form>
+                            {% endif %}
+                        </div>
+                                            </div>
+                                    </div>
+                {% endfor %}
+                                    </div>
+                                </div>
+                            </div>
+
+    <style>
+    .btn-like {
+        display: none;
+    }
+    </style>
+
+    <script>
+    function getCsrfToken() {
+        return document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+    }
+
+    document.getElementById('image').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                document.querySelector('#imagePreview img').src = e.target.result;
+                document.getElementById('imagePreview').style.display = 'block';
+                document.getElementById('videoPreview').style.display = 'none';
+                document.getElementById('filePreview').style.display = 'none';
+            }
+            reader.readAsDataURL(file);
+        }
+    });
+
+    document.getElementById('video').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            const url = URL.createObjectURL(file);
+            document.querySelector('#videoPreview video source').src = url;
+            document.querySelector('#videoPreview video').load();
+            document.getElementById('imagePreview').style.display = 'none';
+            document.getElementById('videoPreview').style.display = 'block';
+            document.getElementById('filePreview').style.display = 'none';
+        }
+    });
+
+    document.getElementById('file').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            document.getElementById('fileName').textContent = file.name;
+            document.getElementById('imagePreview').style.display = 'none';
+            document.getElementById('videoPreview').style.display = 'none';
+            document.getElementById('filePreview').style.display = 'block';
+        }
+    });
+
+    function removePreview(type) {
+        document.getElementById(type).value = '';
+        document.getElementById(type + 'Preview').style.display = 'none';
+    }
+
+    document.getElementById('postForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const formData = new FormData();
+        formData.append('csrf_token', document.querySelector('input[name="csrf_token"]').value);
+        formData.append('content', document.getElementById('content').value);
+        formData.append('is_pinned', document.getElementById('is_pinned').checked);
+        
+        const image = document.getElementById('image').files[0];
+        const video = document.getElementById('video').files[0];
+        const file = document.getElementById('file').files[0];
+        
+        if (image) formData.append('image', image);
+        if (video) formData.append('video', video);
+        if (file) formData.append('file', file);
+
+        fetch('/api/posts', {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRF-Token': getCsrfToken()
+            },
+            credentials: 'same-origin'
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
+        .then(data => {
+            document.getElementById('content').value = '';
+            document.getElementById('is_pinned').checked = false;
+            document.getElementById('image').value = '';
+            document.getElementById('video').value = '';
+            document.getElementById('file').value = '';
+            document.getElementById('imagePreview').style.display = 'none';
+            document.getElementById('videoPreview').style.display = 'none';
+            document.getElementById('filePreview').style.display = 'none';
+            location.reload();
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Произошла ошибка при создании поста');
+        });
+    });
+
+    function toggleComments(postId) {
+        const commentsSection = document.querySelector(`.post-card[data-post-id="${postId}"] .comments-section`);
+        commentsSection.style.display = commentsSection.style.display === 'none' ? 'block' : 'none';
+    }
+
+    function addComment(event, postId) {
+        event.preventDefault();
+        const form = event.target;
+        const input = form.querySelector('input[type="text"]');
+        const content = input.value.trim();
+        
+        if (!content) return;
+
+        console.log('Отправляем комментарий:', {
+            content: content,
+            postId: postId
+        });
+
+        fetch(`/api/posts/${postId}/comments`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            },
+            credentials: 'same-origin',
+            body: JSON.stringify({ 
+                content: content,
+                csrf_token: document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            })
+        })
+        .then(response => {
+            console.log('Получен ответ от сервера:', response.status);
+            if (!response.ok) {
+                return response.json().then(err => Promise.reject(err));
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log('Получены данные:', data);
+            
+            if (!data) {
+                throw new Error('Ответ сервера пуст');
+            }
+            
+            if (!data.user) {
+                console.error('Данные пользователя отсутствуют в ответе:', data);
+                throw new Error('Ответ сервера не содержит данных пользователя');
+            }
+
+            const commentsList = form.closest('.comments-section').querySelector('.comments-list');
+            const avatarUrl = data.user.avatar 
+                ? `/static/avatars/${data.user.avatar}` 
+                : '/static/avatars/default.png';
+            const username = data.user.username || 'Пользователь';
+            const timestamp = data.created_at || new Date().toLocaleString();
+            
+            console.log('Подготовленные данные для отображения:', {
+                avatarUrl,
+                username,
+                timestamp
+            });
+
+            const commentHtml = `
+                <div class="comment">
+                    <div class="d-flex align-items-center mb-2">
+                        <img src="${avatarUrl}"
+                             class="rounded-circle me-2" style="width: 30px; height: 30px; object-fit: cover;">
+                        <div>
+                            <strong>${username}</strong>
+                            <small class="text-muted">${timestamp}</small>
+                        </div>
+                    </div>
+                    <p class="mb-0">${data.content}</p>
+                </div>
+            `;
+            commentsList.insertAdjacentHTML('afterbegin', commentHtml);
+            input.value = '';
+            
+            // Обновляем счетчик комментариев
+            const commentsCount = form.closest('.post-card').querySelector('.comments-count');
+            commentsCount.textContent = parseInt(commentsCount.textContent) + 1;
+        })
+        .catch(error => {
+            console.error('Ошибка при добавлении комментария:', error);
+            alert('Произошла ошибка при добавлении комментария: ' + (error.message || error.error || 'Неизвестная ошибка'));
+        });
+    }
+
+    async function toggleLike(postId) {
+        const likeBtn = document.querySelector(`.like-btn[data-post-id="${postId}"]`);
+        const heartIcon = likeBtn.querySelector('i');
+        const likesCount = likeBtn.querySelector('.likes-count');
+        
+        try {
+            if (heartIcon.classList.contains('text-danger')) {
+                // Убираем лайк
+                const response = await fetch(`/api/posts/${postId}/unlike`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-Token': getCsrfToken()
+                    }
+                });
+                const data = await response.json();
+                heartIcon.classList.remove('text-danger');
+                likesCount.textContent = data.likes_count;
+            } else {
+                // Ставим лайк
+                const response = await fetch(`/api/posts/${postId}/like`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-Token': getCsrfToken()
+                    }
+                });
+                const data = await response.json();
+                heartIcon.classList.add('text-danger');
+                likesCount.textContent = data.likes_count;
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('Произошла ошибка при обработке лайка');
+        }
+    }
+    </script>
+{% endblock %} 

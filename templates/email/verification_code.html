@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .code {
+            font-size: 24px;
+            font-weight: bold;
+            color: #4a90e2;
+            text-align: center;
+            padding: 20px;
+            margin: 20px 0;
+            background-color: #f5f6f8;
+            border-radius: 8px;
+        }
+        .warning {
+            color: #e74c3c;
+            font-size: 14px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Здравствуйте, {{ user.username }}!</h2>
+        <p>Для входа в аккаунт используйте следующий код подтверждения:</p>
+        
+        <div class="code">{{ code }}</div>
+        
+        <p>Код действителен в течение 15 минут.</p>
+        
+        <p class="warning">
+            Если вы не запрашивали этот код, проигнорируйте это письмо и измените пароль вашего аккаунта.
+        </p>
+    </div>
+</body>
+</html> 
